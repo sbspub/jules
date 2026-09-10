@@ -177,6 +177,21 @@ class TradingOrchestrator:
         price_history: Optional[List[Dict[str, Any]]] = None
     ) -> AgentState:
         """Runs the agentic graph end-to-end."""
+        if price_history is None:
+            formatted_key = symbol if ":" in symbol else f"NSE:{symbol}"
+            quotes = self.zerodha_client.get_quote([symbol])
+            q_data = quotes.get(formatted_key) or quotes.get(symbol) or (list(quotes.values())[0] if quotes else {})
+            base_p = float(q_data.get("last_price", 2500.0))
+            price_history = [
+                {
+                    "close": round(base_p * 0.98 + i * (base_p * 0.002), 2),
+                    "high": round(base_p * 0.99 + i * (base_p * 0.002), 2),
+                    "low": round(base_p * 0.97 + i * (base_p * 0.002), 2),
+                    "volume": 10000 + i * 500
+                }
+                for i in range(30)
+            ]
+
         initial_state: AgentState = {
             "symbol": symbol,
             "strategy_mode": strategy_mode,
@@ -188,10 +203,7 @@ class TradingOrchestrator:
             "financials": financials or {
                 "pe_ratio": 22.5, "pb_ratio": 2.8, "debt_to_equity": 0.4, "roe_pct": 18.5, "revenue_growth_yo_y": 14.0
             },
-            "price_history": price_history or [
-                {"close": 2450.0 + i * 2, "high": 2460.0 + i * 2, "low": 2440.0 + i * 2, "volume": 10000 + i * 500}
-                for i in range(30)
-            ],
+            "price_history": price_history,
             "news_result": None,
             "company_result": None,
             "technical_result": None,
