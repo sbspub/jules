@@ -1,6 +1,8 @@
 import os
+from dotenv import load_dotenv
 from typing import Optional
 from pydantic import BaseModel, Field
+
 
 class Settings(BaseModel):
     openai_api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", "mock_key"))
@@ -20,4 +22,5 @@ class Settings(BaseModel):
     target_profit_pct: float = 0.05          # 5% profit target
     initial_paper_balance: float = 100000.0  # 1 Lakh INR starting paper balance
 
+load_dotenv("~/.env")
 settings = Settings()
