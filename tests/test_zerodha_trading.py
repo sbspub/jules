@@ -13,6 +13,15 @@ def test_zerodha_client_mock_flow():
     quotes = client.get_quote(["RELIANCE"])
     assert "NSE:RELIANCE" in quotes
 
+    sbin_quotes = client.get_quote(["SBIN"])
+    assert "NSE:SBIN" in sbin_quotes
+    sbin_ohlc = sbin_quotes["NSE:SBIN"]["ohlc"]
+    assert "open" in sbin_ohlc
+    assert "high" in sbin_ohlc
+    assert "low" in sbin_ohlc
+    assert "close" in sbin_ohlc
+    assert sbin_quotes["NSE:SBIN"]["last_price"] == 800.0
+
     order = client.place_order(symbol="RELIANCE", transaction_type="BUY", quantity=5, product="MIS")
     assert order["status"] == "SUCCESS"
 

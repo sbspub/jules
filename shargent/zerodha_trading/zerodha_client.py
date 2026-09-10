@@ -76,19 +76,29 @@ class ZerodhaClient:
             except Exception as e:
                 logger.error(f"Error fetching Zerodha quote: {e}")
 
+        mock_prices = {
+            "RELIANCE": 2500.0,
+            "TCS": 3500.0,
+            "SBIN": 800.0,
+            "INFY": 1800.0,
+            "INFYS": 1800.0,
+            "HDFCBANK": 1600.0,
+            "ICICIBANK": 1000.0,
+        }
+
         quotes = {}
         for s in formatted_symbols:
-            clean_sym = s.split(":")[-1]
-            base_price = 2500.0 if clean_sym == "RELIANCE" else (3500.0 if clean_sym == "TCS" else 1500.0)
+            clean_sym = s.split(":")[-1].upper()
+            base_price = mock_prices.get(clean_sym, 1500.0)
             quotes[s] = {
                 "instrument_token": random.randint(100000, 999999),
                 "timestamp": "2025-01-01T10:00:00",
-                "last_price": base_price,
+                "last_price": round(base_price, 2),
                 "ohlc": {
-                    "open": base_price * 0.99,
-                    "high": base_price * 1.02,
-                    "low": base_price * 0.98,
-                    "close": base_price * 0.995
+                    "open": round(base_price * 0.99, 2),
+                    "high": round(base_price * 1.02, 2),
+                    "low": round(base_price * 0.98, 2),
+                    "close": round(base_price * 0.995, 2)
                 },
                 "volume": 500000,
                 "buy_quantity": 10000,
