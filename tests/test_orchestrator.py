@@ -1,8 +1,9 @@
 import pytest
 from shargent.orchestrator.graph import TradingOrchestrator
+from shargent.zerodha_trading.zerodha_client import ZerodhaClient
 
 def test_orchestrator_auto_day_trade():
-    orchestrator = TradingOrchestrator()
+    orchestrator = TradingOrchestrator(zerodha_client=ZerodhaClient(api_key="mock", access_token="mock"))
     res = orchestrator.run_strategy(
         symbol="RELIANCE",
         strategy_mode="AUTO_DAY_TRADE",
@@ -15,7 +16,7 @@ def test_orchestrator_auto_day_trade():
     assert res["execution_result"] is not None
 
 def test_orchestrator_long_term_investment():
-    orchestrator = TradingOrchestrator()
+    orchestrator = TradingOrchestrator(zerodha_client=ZerodhaClient(api_key="mock", access_token="mock"))
     res = orchestrator.run_strategy(
         symbol="TCS",
         strategy_mode="LONG_TERM_INVESTMENT",

@@ -1,5 +1,5 @@
 import pytest
-from shargent.zerodha_trading.zerodha_client import ZerodhaClient
+from shargent.zerodha_trading.zerodha_client import ZerodhaClient, ZerodhaQuoteError
 
 def test_zerodha_client_mock_flow():
     client = ZerodhaClient(api_key="mock", access_token="mock")
@@ -30,3 +30,12 @@ def test_zerodha_client_mock_flow():
 
     cancel_res = client.cancel_order(order["order_id"])
     assert cancel_res["status"] == "SUCCESS"
+
+
+def test_quote_requires_live_credentials_for_a_normal_client(monkeypatch):
+    monkeypatch.delenv("ZERODHA_API_KEY", raising=False)
+    monkeypatch.delenv("ZERODHA_ACCESS_TOKEN", raising=False)
+    client = ZerodhaClient(api_key="", access_token="")
+
+    with pytest.raises(ZerodhaQuoteError, match="credentials are not configured"):
+        client.get_quote(["SBIN"])
