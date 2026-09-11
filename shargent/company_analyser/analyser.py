@@ -27,12 +27,12 @@ class CompanyAnalyser:
         """
         Analyzes fundamental company financials, valuation ratios, and market performance.
         """
-        pe = financials.get("pe_ratio", 25.0)
-        pb = financials.get("pb_ratio", 3.0)
-        de = financials.get("debt_to_equity", 0.5)
-        roe = financials.get("roe_pct", 15.0)
-        rev_growth = financials.get("revenue_growth_yo_y", 12.0)
-        profit_margin = financials.get("profit_margin_pct", 10.0)
+        pe = financials.get("pe_ratio")
+        pb = financials.get("pb_ratio")
+        de = financials.get("debt_to_equity")
+        roe = financials.get("roe_pct")
+        rev_growth = financials.get("revenue_growth_yo_y")
+        profit_margin = financials.get("profit_margin_pct")
 
         # Fundamental score calculation algorithm
         score = 50.0
@@ -40,34 +40,34 @@ class CompanyAnalyser:
         risks = []
 
         # ROE check
-        if roe > 18:
+        if roe is not None and roe > 18:
             score += 15
             strengths.append(f"High Return on Equity ({roe}%)")
-        elif roe < 8:
+        elif roe is not None and roe < 8:
             score -= 15
             risks.append(f"Low Return on Equity ({roe}%)")
 
         # Debt to Equity check
-        if de < 0.5:
+        if de is not None and de < 0.5:
             score += 15
             strengths.append(f"Low Debt-to-Equity ratio ({de})")
-        elif de > 1.5:
+        elif de is not None and de > 1.5:
             score -= 20
             risks.append(f"High Leverage / Debt-to-Equity ({de})")
 
         # Revenue growth
-        if rev_growth > 15:
+        if rev_growth is not None and rev_growth > 15:
             score += 10
             strengths.append(f"Strong YoY Revenue Growth ({rev_growth}%)")
-        elif rev_growth < 0:
+        elif rev_growth is not None and rev_growth < 0:
             score -= 15
             risks.append(f"Declining Revenue Growth ({rev_growth}%)")
 
         # Valuation PE check
-        if pe < 20:
+        if pe is not None and pe < 20:
             score += 10
             strengths.append(f"Attractive P/E ratio ({pe})")
-        elif pe > 60:
+        elif pe is not None and pe > 60:
             score -= 10
             risks.append(f"High P/E valuation multiple ({pe})")
 
@@ -76,7 +76,7 @@ class CompanyAnalyser:
         if score >= 70:
             health = "STRONG"
             long_outlook = "BULLISH"
-            short_outlook = "BULLISH" if rev_growth > 10 else "NEUTRAL"
+            short_outlook = "BULLISH" if rev_growth is not None and rev_growth > 10 else "NEUTRAL"
         elif score >= 45:
             health = "MODERATE"
             long_outlook = "NEUTRAL"

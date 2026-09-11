@@ -2,8 +2,17 @@ import sys
 import os
 import argparse
 import json
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load user credentials before importing application modules. Several of those
+# modules create configuration objects at import time, so loading ~/.env later
+# leaves them with fallback values instead.
+load_dotenv(Path.home() / ".env")
 
 from shargent.orchestrator.graph import TradingOrchestrator
+from shargent.zerodha_trading.zerodha_client import ZerodhaQuoteError
 from shargent.config import settings
 
 def main():
@@ -29,8 +38,13 @@ def main():
 
     orchestrator = TradingOrchestrator()
 
-    # Fetch and print live or mock market quote / OHLC data for the symbol
-    quote_res = orchestrator.zerodha_client.get_quote([symbol])
+    # This must be a Kite response. Do not print plausible-looking fixture data
+    # when credentials are absent or the API request fails.
+    try:
+        quote_res = orchestrator.zerodha_client.get_quote([symbol])
+    except ZerodhaQuoteError as exc:
+        print(f"\nUnable to retrieve a live Zerodha quote for {symbol}: {exc}", file=sys.stderr)
+        return 2
     formatted_key = symbol if ":" in symbol else f"NSE:{symbol}"
     quote_data = quote_res.get(formatted_key) or quote_res.get(symbol) or (list(quote_res.values())[0] if quote_res else {})
     ohlc = quote_data.get("ohlc", {})
@@ -85,4 +99,4 @@ def main():
     print("=" * 60)
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

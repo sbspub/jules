@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -22,5 +23,8 @@ class Settings(BaseModel):
     target_profit_pct: float = 0.05          # 5% profit target
     initial_paper_balance: float = 100000.0  # 1 Lakh INR starting paper balance
 
-load_dotenv("~/.env")
+# Load a project .env when present, then the conventional user-level file.
+# pathlib expands the home directory; the previous literal "~/.env" did not.
+load_dotenv()
+load_dotenv(Path.home() / ".env")
 settings = Settings()

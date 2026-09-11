@@ -8,6 +8,7 @@ from shargent.technical_analyser.analyser import TechnicalAnalyser, TechnicalAna
 from shargent.zerodha_trading.zerodha_client import ZerodhaClient
 from shargent.paper_trading.paper_engine import PaperEngine, LearningMode
 from shargent.config import settings
+from shargent.real_data import fetch_fundamentals, fetch_news
 
 class AgentState(TypedDict):
     symbol: str
@@ -177,32 +178,29 @@ class TradingOrchestrator:
         price_history: Optional[List[Dict[str, Any]]] = None
     ) -> AgentState:
         """Runs the agentic graph end-to-end."""
+        formatted_key = symbol if ":" in symbol else f"NSE:{symbol}"
+        quotes = self.zerodha_client.get_quote([symbol])
+        q_data = quotes.get(formatted_key) or quotes.get(symbol) or (list(quotes.values())[0] if quotes else {})
+        current_price = float(q_data.get("last_price", 0.0))
+
         if price_history is None:
-            formatted_key = symbol if ":" in symbol else f"NSE:{symbol}"
-            quotes = self.zerodha_client.get_quote([symbol])
-            q_data = quotes.get(formatted_key) or quotes.get(symbol) or (list(quotes.values())[0] if quotes else {})
-            base_p = float(q_data.get("last_price", 2500.0))
-            price_history = [
-                {
-                    "close": round(base_p * 0.98 + i * (base_p * 0.002), 2),
-                    "high": round(base_p * 0.99 + i * (base_p * 0.002), 2),
-                    "low": round(base_p * 0.97 + i * (base_p * 0.002), 2),
-                    "volume": 10000 + i * 500
-                }
-                for i in range(30)
-            ]
+            price_history = self.zerodha_client.get_daily_history(symbol)
+
+        # Mock clients are explicit test fixtures. Normal paper and live modes
+        # must acquire news and fundamental inputs rather than inventing them.
+        is_mock_client = getattr(self.zerodha_client, "api_key", "").startswith("mock")
+        if news_items is None:
+            news_items = [] if is_mock_client else fetch_news(symbol)
+        if financials is None:
+            financials = {} if is_mock_client else fetch_fundamentals(symbol, current_price)
 
         initial_state: AgentState = {
             "symbol": symbol,
             "strategy_mode": strategy_mode,
             "trading_mode": trading_mode,
             "quantity": quantity,
-            "news_items": news_items or [
-                {"title": f"{symbol} reports Q3 earnings growth of 18% YoY", "snippet": "Strong top-line growth and margin expansion."}
-            ],
-            "financials": financials or {
-                "pe_ratio": 22.5, "pb_ratio": 2.8, "debt_to_equity": 0.4, "roe_pct": 18.5, "revenue_growth_yo_y": 14.0
-            },
+            "news_items": news_items,
+            "financials": financials,
             "price_history": price_history,
             "news_result": None,
             "company_result": None,

@@ -2,8 +2,14 @@ from typing import Dict, Any, List, Optional
 import os
 import random
 import logging
+from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
+
+
+class ZerodhaQuoteError(RuntimeError):
+    """Raised when a quote cannot be obtained from the Zerodha Kite API."""
+
 
 class ZerodhaClient:
     def __init__(self, api_key: Optional[str] = None, access_token: Optional[str] = None):
@@ -18,7 +24,7 @@ class ZerodhaClient:
                 self.kite = KiteConnect(api_key=self.api_key)
                 self.kite.set_access_token(self.access_token)
             except Exception as e:
-                logger.warning(f"Could not initialize KiteConnect client: {e}. Falling back to sandbox mock mode.")
+                logger.warning(f"Could not initialize KiteConnect client: {e}. Live quote requests will fail.")
                 self.is_live = False
 
         # Internal state for mock mode
@@ -68,14 +74,31 @@ class ZerodhaClient:
         }
 
     def get_quote(self, symbols: List[str]) -> Dict[str, Any]:
-        """Fetches live quotes for provided symbols (e.g., ['NSE:RELIANCE', 'NSE:TCS'])."""
+        """Fetch Kite quotes, or fixtures for an explicitly constructed mock client.
+
+        Normal clients never substitute a made-up quote for a failed live request.
+        """
         formatted_symbols = [s if ":" in s else f"NSE:{s}" for s in symbols]
         if self.is_live and self.kite:
             try:
                 return self.kite.quote(formatted_symbols)
             except Exception as e:
-                logger.error(f"Error fetching Zerodha quote: {e}")
+                raise ZerodhaQuoteError(f"Zerodha Kite quote request failed: {e}") from e
 
+        if not self.api_key or not self.access_token:
+            raise ZerodhaQuoteError(
+                "Zerodha credentials are not configured. Set ZERODHA_API_KEY and "
+                "a current ZERODHA_ACCESS_TOKEN before requesting market data."
+            )
+
+        if not self.api_key.startswith("mock"):
+            raise ZerodhaQuoteError(
+                "KiteConnect could not be initialized. Install/configure kiteconnect "
+                "and verify ZERODHA_API_KEY and ZERODHA_ACCESS_TOKEN."
+            )
+
+        # Fixtures are available only to callers that deliberately construct a
+        # mock client (api_key="mock"), such as isolated unit tests.
         mock_prices = {
             "RELIANCE": 2500.0,
             "TCS": 3500.0,
@@ -105,6 +128,38 @@ class ZerodhaClient:
                 "sell_quantity": 8000
             }
         return quotes
+
+    def get_daily_history(self, symbol: str, calendar_days: int = 100) -> List[Dict[str, Any]]:
+        """Return actual daily candles for analysis, or explicit test fixtures."""
+        if self.is_live and self.kite:
+            try:
+                quote = self.get_quote([symbol])
+                key = symbol if ":" in symbol else f"NSE:{symbol}"
+                data = quote.get(key) or next(iter(quote.values()))
+                instrument_token = data.get("instrument_token")
+                if not instrument_token:
+                    raise ZerodhaQuoteError(f"Kite did not return an instrument token for {symbol}")
+                candles = self.kite.historical_data(
+                    instrument_token,
+                    date.today() - timedelta(days=calendar_days),
+                    date.today(),
+                    "day",
+                )
+                if len(candles) < 30:
+                    raise ZerodhaQuoteError(f"Kite returned only {len(candles)} daily candles for {symbol}")
+                return candles
+            except ZerodhaQuoteError:
+                raise
+            except Exception as exc:
+                raise ZerodhaQuoteError(f"Zerodha Kite historical-data request failed: {exc}") from exc
+
+        if self.api_key.startswith("mock"):
+            base_price = self.get_quote([symbol])[f"NSE:{symbol.split(':')[-1]}"]["last_price"]
+            return [
+                {"close": base_price, "high": base_price * 1.01, "low": base_price * 0.99, "volume": 1000}
+                for _ in range(30)
+            ]
+        raise ZerodhaQuoteError("Live Zerodha credentials are required for real historical analysis.")
 
     def place_order(
         self,
